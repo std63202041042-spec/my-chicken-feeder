@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Chicken Feeder IoT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff9f43;
+            --secondary: #54a0ff;
+            --success: #2ecc71;
+            --danger: #ff6b6b;
+            --bg: #f5f6fa;
+            --dark: #2f3542;
+        }
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 380px;
+            height: 660px; /* เพิ่มความสูงเล็กน้อยเพื่อรองรับปุ่มที่เพิ่มมา */
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* ระบบสลับหน้า */
+        .page {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            animation: fadeIn 0.3s ease;
+        }
+        .page.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* หน้าที่ 1: หน้าแรก (Welcome) */
+        #page-welcome {
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ff9f43, #ff6b6b);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .chicken-img {
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 50%;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 90px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border: 5px solid rgba(255,255,255,0.3);
+        }
+
+        /* ส่วนหัวของทุกหน้า */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 25px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* กราฟิกถังอาหาร */
+        .food-tank {
+            width: 90px;
+            height: 130px;
+            border: 4px solid #ddd;
+            border-radius: 10px;
+            margin: 15px auto;
+            position: relative;
+            background: #eee;
+            overflow: hidden;
+        }
+        .food-level {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: #feca57;
+            transition: height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* ปุ่มและอินพุต */
+        .btn-main { background: white; color: var(--danger); border: none; padding: 15px 50px; border-radius: 30px; font-size: 22px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        
+        .btn-action { 
+            background: var(--secondary); 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            margin: 5px 30px; 
+            border-radius: 15px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        .btn-action:active { transform: scale(0.96); }
+        .btn-half { background: var(--success); }
+        .btn-refill { background: #48dbfb; }
+
+        .nav-bar {
+            display: flex;
+            background: #fff;
+            padding: 15px;
+            justify-content: space-around;
+            border-top: 2px solid #f1f2f6;
+        }
+        .nav-item { cursor: pointer; font-size: 28px; color: #ced6e0; }
+        .nav-item.active { color: var(--primary); }
+
+        .timer-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--primary);
+        }
+        #alert-box { background: var(--danger); color: white; margin: 5px 30px; padding: 8px; border-radius: 10px; display: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="page-welcome" class="page active">
+        <div class="chicken-img">🐥</div>
+        <h1 style="margin: 0;">Chicken IoT</h1>
+        <p style="opacity: 0.9; margin-bottom: 40px;">ระบบจัดการฟาร์มไก่อัจฉริยะ</p>
+        <button class="btn-main" onclick="goToPage('page-control')">เข้าใช้งาน</button>
+    </div>
+
+    <div id="page-control" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="goToPage('page-welcome')">⬅ ย้อนกลับ</button>
+            <h3 style="margin:0">สถานะปัจจุบัน</h3>
+        </div>
+        <div style="text-align: center; padding: 15px;">
+            <div id="alert-box">⚠️ อาหารหมดแล้ว!</div>
+            <div class="food-tank">
+                <div id="level-bar" class="food-level" style="height: 100%;"></div>
+            </div>
+            <div style="font-size: 24px; font-weight: bold; color: var(--dark);">อาหารเหลือ: <span id="percent-text">100</span>%</div>
+        </div>
+        
+        <button id="feed-btn" class="btn-action" onclick="feedPet()">🍴 สั่งให้อาหารทันที (-10%)</button>
+        <button class="btn-action btn-half" onclick="refillHalf()">🥣 เติมอาหารครึ่งถัง (50%)</button>
+        <button class="btn-action btn-refill" onclick="refillFull()">🛒 เติมอาหารเต็มถัง (100%)</button>
+        
+        <div style="flex-grow: 1;"></div>
+        <div class="nav-bar">
+            <div class="nav-item active" onclick="goToPage('page-control')">🏠</div>
+            <div class="nav-item" onclick="goToPage('page-timer')">⏰</div>
+        </div>
+    </div>
+
+    <div id="page-timer" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="goToPage('page-welcome')">⬅ ย้อนกลับ</button>
+            <h3 style="margin:0">ตั้งเวลาอัตโนมัติ</h3>
+        </div>
+        <div style="padding: 20px; text-align: center; display: flex; flex-direction: column;">
+            <input type="time" id="timer-input" style="padding:10px; font-size:20px; margin-bottom:10px; border-radius:10px; border:2px solid var(--primary);">
+            <button class="btn-action" style="margin: 0;" onclick="addTimer()">➕ บันทึกเวลา</button>
+        </div>
+        <div id="timer-display" style="overflow-y: auto; flex-grow: 1;"></div>
+        <div class="nav-bar">
+            <div class="nav-item" onclick="goToPage('page-control')">🏠</div>
+            <div class="nav-item active" onclick="goToPage('page-timer')">⏰</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let foodLevel = 100;
+    let timers = [];
+
+    function goToPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    // 1. ฟังก์ชันให้อาหาร
+    function feedPet() {
+        if (foodLevel >= 10) {
+            foodLevel -= 10;
+            updateUI();
+            speak("จ่ายอาหารเรียบร้อย");
+            checkLevel();
+        } else {
+            speak("อาหารไม่พอจ่ายค่ะ");
+        }
+    }
+
+    // 2. ฟังก์ชันเติมอาหารครึ่งถัง (ปุ่มใหม่)
+    function refillHalf() {
+        if (foodLevel < 50) {
+            foodLevel = 50;
+            updateUI();
+            resetAlert();
+            speak("เติมอาหารให้ครึ่งถังแล้วค่ะ");
+        } else {
+            speak("อาหารยังมีมากกว่าครึ่งถัง ไม่ต้องเติมค่ะ");
+        }
+    }
+
+    // 3. ฟังก์ชันเติมอาหารเต็มถัง
+    function refillFull() {
+        foodLevel = 100;
+        updateUI();
+        resetAlert();
+        speak("เติมอาหารเต็มถังเรียบร้อยค่ะ");
+    }
+
+    function updateUI() {
+        document.getElementById('level-bar').style.height = foodLevel + '%';
+        document.getElementById('percent-text').innerText = foodLevel;
+    }
+
+    function resetAlert() {
+        document.getElementById('alert-box').style.display = 'none';
+        document.getElementById('feed-btn').disabled = false;
+    }
+
+    function checkLevel() {
+        if (foodLevel <= 0) {
+            document.getElementById('alert-box').style.display = 'block';
+            document.getElementById('feed-btn').disabled = true;
+            speak("อาหารหมดแล้วค่ะ");
+        }
+    }
+
+    function addTimer() {
+        const timeVal = document.getElementById('timer-input').value;
+        if(timeVal && !timers.includes(timeVal)) {
+            timers.push(timeVal);
+            renderTimers();
+            speak("ตั้งเวลา " + timeVal);
+        }
+    }
+
+    function renderTimers() {
+        const display = document.getElementById('timer-display');
+        display.innerHTML = "";
+        timers.forEach((t, index) => {
+            display.innerHTML += `
+                <div class="timer-item">
+                    <span>🔔 ${t} น.</span>
+                    <button onclick="removeTimer(${index})" style="background:red; color:white; border:none; border-radius:5px; padding:5px;">ลบ</button>
+                </div>`;
+        });
+    }
+
+    function removeTimer(index) {
+        timers.splice(index, 1);
+        renderTimers();
+    }
+
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = text;
+        msg.lang = 'th-TH';
+        window.speechSynthesis.speak(msg);
+    }
+
+    // ตรวจสอบเวลาทุกวินาที
+    setInterval(() => {
+        const now = new Date();
+        const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        if (now.getSeconds() === 0 && timers.includes(currentTime)) {
+            feedPet();
+        }
+    }, 1000);
+</script>
+
+</body>
+</html>
